@@ -20,6 +20,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 repositories {
     mavenCentral()
+    mavenLocal()
     jcenter()
     maven { url "https://repository.cloudera.com/artifactory/cloudera-repos/" }
     maven { url "https://repo.spring.io/plugins-release/" }
@@ -211,6 +212,8 @@ dependencies {
     bundled 'com.indeed:util-serialization:1.0.31'
     bundled 'com.indeed:util-mmap:1.0.31'
     bundled group: 'org.freemarker', name: 'freemarker', version: '2.3.14'
+
+    compile group: 'io.tiledb', name: 'TileDB-VCF-Spark', version: '0.6.1'
 }
 
 task(checkSettings) doLast {

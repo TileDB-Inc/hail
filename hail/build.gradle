@@ -14,12 +14,17 @@ plugins {
   id 'com.github.johnrengelman.shadow' version '5.0.0'
   id "de.undercouch.download" version "3.2.0"
   id 'eclipse'
+  id 'maven-publish'
 }
+
+group 'is.hail'
+version 'main'
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 repositories {
     mavenCentral()
+    mavenLocal()
     jcenter()
     maven { url "https://repository.cloudera.com/artifactory/cloudera-repos/" }
     maven { url "https://repo.spring.io/plugins-release/" }
@@ -153,6 +158,8 @@ configurations {
 
 dependencies {
     justSpark 'org.apache.spark:spark-mllib_' + scalaMajorVersion + ':' + sparkVersion
+
+    compile group: 'io.tiledb', name: 'TileDB-VCF-Spark', version: '0.6.1'
 
     unbundled 'org.scala-lang:scala-library:' + scalaVersion
     unbundled 'org.scala-lang:scala-reflect:' + scalaVersion
@@ -329,4 +336,27 @@ task shadowTestJar(type: ShadowJar) {
     classifier = 'spark-test'
     from project.sourceSets.main.output, project.sourceSets.test.output
     configurations = [project.configurations.hailTestJar]
+}
+
+task sourceJar(type: Jar) {
+    classifier "sources"
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier "javadoc"
+    from javadoc.destinationDir
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+            artifact sourceJar
+            artifact javadocJar
+        }
+        shadow(MavenPublication) { publication ->
+            project.shadow.component(publication)
+        }
+    }
 }

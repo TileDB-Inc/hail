@@ -1182,6 +1182,10 @@ class Tests(unittest.TestCase):
             .default(4))
         self.assertEqual(hl.eval(expr5), -1)
 
+        with pytest.raises(hl.utils.java.HailUserError) as exc:
+            hl.eval(hl.switch(x).when('0', 0).or_error("foo"))
+        assert '.or_error("foo")' in str(exc.value)
+
     def test_case(self):
         def make_case(x):
             x = hl.literal(x)
@@ -2297,13 +2301,59 @@ class Tests(unittest.TestCase):
         self.assertEqual(hl.eval(hl.zip(a3, a2, a1)),
                          [([1], 'a', 1)])
 
-    def test_array_methods(self):
+    def test_any_form_1(self):
+        self.assertEqual(hl.eval(hl.any()), False)
+
+        self.assertEqual(hl.eval(hl.any(True)), True)
+        self.assertEqual(hl.eval(hl.any(False)), False)
+
+        self.assertEqual(hl.eval(hl.any(True, True)), True)
+        self.assertEqual(hl.eval(hl.any(True, False)), True)
+        self.assertEqual(hl.eval(hl.any(False, True)), True)
+        self.assertEqual(hl.eval(hl.any(False, False)), False)
+
+    def test_all_form_1(self):
+        self.assertEqual(hl.eval(hl.all()), True)
+
+        self.assertEqual(hl.eval(hl.all(True)), True)
+        self.assertEqual(hl.eval(hl.all(False)), False)
+
+        self.assertEqual(hl.eval(hl.all(True, True)), True)
+        self.assertEqual(hl.eval(hl.all(True, False)), False)
+        self.assertEqual(hl.eval(hl.all(False, True)), False)
+        self.assertEqual(hl.eval(hl.all(False, False)), False)
+
+    def test_any_form_2(self):
+        self.assertEqual(hl.eval(hl.any(hl.empty_array(hl.tbool))), False)
+
+        self.assertEqual(hl.eval(hl.any([True])), True)
+        self.assertEqual(hl.eval(hl.any([False])), False)
+
+        self.assertEqual(hl.eval(hl.any([True, True])), True)
+        self.assertEqual(hl.eval(hl.any([True, False])), True)
+        self.assertEqual(hl.eval(hl.any([False, True])), True)
+        self.assertEqual(hl.eval(hl.any([False, False])), False)
+
+    def test_all_form_2(self):
+        self.assertEqual(hl.eval(hl.all(hl.empty_array(hl.tbool))), True)
+
+        self.assertEqual(hl.eval(hl.all([True])), True)
+        self.assertEqual(hl.eval(hl.all([False])), False)
+
+        self.assertEqual(hl.eval(hl.all([True, True])), True)
+        self.assertEqual(hl.eval(hl.all([True, False])), False)
+        self.assertEqual(hl.eval(hl.all([False, True])), False)
+        self.assertEqual(hl.eval(hl.all([False, False])), False)
+
+    def test_any_form_3(self):
         self.assertEqual(hl.eval(hl.any(lambda x: x % 2 == 0, [1, 3, 5])), False)
         self.assertEqual(hl.eval(hl.any(lambda x: x % 2 == 0, [1, 3, 5, 6])), True)
 
+    def test_all_form_3(self):
         self.assertEqual(hl.eval(hl.all(lambda x: x % 2 == 0, [1, 3, 5, 6])), False)
         self.assertEqual(hl.eval(hl.all(lambda x: x % 2 == 0, [2, 6])), True)
 
+    def test_array_methods(self):
         self.assertEqual(hl.eval(hl.map(lambda x: x % 2 == 0, [0, 1, 4, 6])), [True, False, True, True])
 
         self.assertEqual(hl.eval(hl.len([0, 1, 4, 6])), 4)
@@ -2391,6 +2441,11 @@ class Tests(unittest.TestCase):
         assert hl.eval(a.index(4)) is None
         assert hl.eval(a.index(lambda x: x % 2 == 0) == 1)
         assert hl.eval(a.index(lambda x: x > 5)) is None
+
+    def test_array_empty_struct(self):
+        a = hl.array([hl.struct()])
+        b = hl.literal([hl.struct()])
+        assert hl.eval(a) == hl.eval(b)
 
     def test_bool_r_ops(self):
         self.assertTrue(hl.eval(hl.literal(True) & True))

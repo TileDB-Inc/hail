@@ -14,7 +14,11 @@ plugins {
   id 'com.github.johnrengelman.shadow' version '5.0.0'
   id "de.undercouch.download" version "3.2.0"
   id 'eclipse'
+  id 'maven-publish'
 }
+
+group 'is.hail'
+version 'main'
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
@@ -212,8 +216,6 @@ dependencies {
     bundled 'com.indeed:util-serialization:1.0.31'
     bundled 'com.indeed:util-mmap:1.0.31'
     bundled group: 'org.freemarker', name: 'freemarker', version: '2.3.14'
-
-    compile group: 'io.tiledb', name: 'TileDB-VCF-Spark', version: '0.6.1'
 }
 
 task(checkSettings) doLast {
@@ -332,4 +334,27 @@ task shadowTestJar(type: ShadowJar) {
     classifier = 'spark-test'
     from project.sourceSets.main.output, project.sourceSets.test.output
     configurations = [project.configurations.hailTestJar]
+}
+
+task sourceJar(type: Jar) {
+    classifier "sources"
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier "javadoc"
+    from javadoc.destinationDir
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+            artifact sourceJar
+            artifact javadocJar
+        }
+        shadow(MavenPublication) { publication ->
+            project.shadow.component(publication)
+        }
+    }
 }

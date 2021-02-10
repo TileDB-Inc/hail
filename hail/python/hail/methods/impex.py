@@ -2068,7 +2068,13 @@ def get_vcf_metadata(path):
     return Env.backend().parse_vcf_metadata(path)
 
 
+def import_tiledb_vcf(*args, **kwargs):
+  kwargs['tiledb'] = True
+  return import_vcf(*args, **kwargs)
+
 @typecheck(path=oneof(str, sequenceof(str)),
+           tiledb=bool,
+           samples=str,
            force=bool,
            force_bgz=bool,
            header_file=nullable(str),
@@ -2086,7 +2092,10 @@ def get_vcf_metadata(path):
            block_size=nullable(int),
            # json
            _partitions=nullable(str))
+
 def import_vcf(path,
+               tiledb=False,
+               samples="",
                force=False,
                force_bgz=False,
                header_file=None,
@@ -2248,11 +2257,14 @@ def import_vcf(path,
     :class:`.MatrixTable`
     """
 
-    reader = ir.MatrixVCFReader(path, call_fields, entry_float_type, header_file,
-                                n_partitions, block_size, min_partitions,
-                                reference_genome, contig_recoding, array_elements_required,
-                                skip_invalid_loci, force_bgz, force, filter, find_replace,
-                                _partitions)
+    if not tiledb:
+        reader = ir.MatrixVCFReader(path, call_fields, entry_float_type, header_file,
+                                    n_partitions, block_size, min_partitions,
+                                    reference_genome, contig_recoding, array_elements_required,
+                                    skip_invalid_loci, force_bgz, force, filter, find_replace,
+                                    _partitions)
+    else:
+        reader = ir.MatrixTileDBVCFReader(uri=path, samples=samples)
     return MatrixTable(ir.MatrixRead(reader, drop_cols=drop_samples))
 
 

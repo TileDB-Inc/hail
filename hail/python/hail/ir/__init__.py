@@ -48,7 +48,7 @@ from .blockmatrix_ir import BlockMatrixRead, BlockMatrixMap, BlockMatrixMap2, \
 from .utils import filter_predicate_with_keep, make_filter_and_replace
 from .matrix_reader import MatrixReader, MatrixNativeReader, MatrixRangeReader, \
     MatrixVCFReader, MatrixBGENReader, TextMatrixReader, MatrixPLINKReader, \
-    MatrixGENReader
+    MatrixGENReader, MatrixTileDBVCFReader
 from .table_reader import TableReader, TableNativeReader, TextTableReader, \
     TableFromBlockMatrixNativeReader
 from .blockmatrix_reader import BlockMatrixReader, BlockMatrixNativeReader, \

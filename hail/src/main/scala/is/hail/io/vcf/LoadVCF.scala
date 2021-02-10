@@ -1706,7 +1706,7 @@ class MatrixVCFReader(
 
     val tt = fullMatrixType.toTableType(LowerMatrixIR.entriesFieldName, LowerMatrixIR.colsFieldName)
 
-    val lines = GenericLines.read(fs, fileStatuses, params.nPartitions, params.blockSizeInMB, params.minPartitions, params.gzAsBGZ, params.forceGZ)
+    val lines = GenericLines.read(fs, fileStatuses, Option(5), params.blockSizeInMB, params.minPartitions, params.gzAsBGZ, params.forceGZ)
 
     val globals = Row(sampleIDs.map(Row(_)).toFastIndexedSeq)
 
@@ -1753,7 +1753,7 @@ class MatrixVCFReader(
       }
     }
 
-    new GenericTableValue(
+    val tv = new GenericTableValue(
       tt,
       None,
       { (requestedGlobalsType: Type) =>
@@ -1764,13 +1764,23 @@ class MatrixVCFReader(
       lines.contexts,
       bodyPType,
       body)
+
+    println(s"Creating GenericTableValue with type: ${tt}")
+
+    tv
   }
 
   override def lower(ctx: ExecuteContext, requestedType: TableType): TableStage =
     executeGeneric(ctx).toTableStage(ctx, requestedType)
 
-  def apply(tr: TableRead, ctx: ExecuteContext): TableValue =
-    executeGeneric(ctx).toTableValue(ctx ,tr.typ)
+  def apply(tr: TableRead, ctx: ExecuteContext): TableValue = {
+    val tv = executeGeneric(ctx).toTableValue(ctx ,tr.typ)
+
+    println(s"Created Hail TableValue with ${tr}")
+    tv.rdd.collect.foreach(println)
+
+    tv
+  }
 
   override def toJValue: JValue = {
     implicit val formats: Formats = DefaultFormats

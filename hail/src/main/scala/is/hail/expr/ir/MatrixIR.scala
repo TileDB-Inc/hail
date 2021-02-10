@@ -1,6 +1,7 @@
 
 package is.hail.expr.ir
 
+import is.hail.tiledb.TileDBHailVCFReader
 import is.hail.HailContext
 import is.hail.annotations._
 import is.hail.backend.Backend
@@ -89,6 +90,9 @@ object MatrixReader {
       case "MatrixGENReader" => MatrixGENReader.fromJValue(env.ctx, jv)
       case "MatrixPLINKReader" => MatrixPLINKReader.fromJValue(env.ctx, jv)
       case "MatrixVCFReader" => MatrixVCFReader.fromJValue(env.ctx, jv)
+      case "MatrixTileDBVCFReader" => {
+        TileDBHailVCFReader.fromJValue(jv)
+      }
     }
   }
 }

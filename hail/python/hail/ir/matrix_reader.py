@@ -177,6 +177,18 @@ class MatrixVCFReader(MatrixReader):
             other.find_replace == self.find_replace and \
             other._partitions_json == self._partitions_json
 
+class MatrixTileDBVCFReader(MatrixReader):
+    @typecheck_method(uri=oneof(str, str), samples=str)
+    def __init__(self,
+                 uri, samples):
+        self.uri = uri
+        self.samples = samples
+
+    def render(self, r):
+        reader = {'name': 'MatrixTileDBVCFReader',
+                  'uri': self.uri,
+                  'samples': self.samples}
+        return escape_str(json.dumps(reader))
 
 class MatrixBGENReader(MatrixReader):
     @typecheck_method(path=oneof(str, sequenceof(str)),

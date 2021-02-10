@@ -159,7 +159,7 @@ configurations {
 dependencies {
     justSpark 'org.apache.spark:spark-mllib_' + scalaMajorVersion + ':' + sparkVersion
 
-    compile group: 'io.tiledb', name: 'TileDB-VCF-Spark', version: '0.6.1'
+    bundled group: 'io.tiledb', name: 'TileDB-VCF-Spark', version: '0.7.2-SNAPSHOT'
 
     unbundled 'org.scala-lang:scala-library:' + scalaVersion
     unbundled 'org.scala-lang:scala-reflect:' + scalaVersion

@@ -1,10 +1,10 @@
 package is.hail.expr.ir
 
+import io.tiledb.vcf.VCFDataSourceOptions
+
 import java.net.URI
 import java.nio.file.{Path, Paths}
 import java.util
-
-import io.tiledb.vcf.{TileDBHailVCFReader, VCFDataSourceOptions}
 import is.hail.ExecStrategy.ExecStrategy
 import is.hail.TestUtils.{assertEvalsTo, eval, importVCF}
 import is.hail.annotations.Region
@@ -12,9 +12,11 @@ import is.hail.backend.spark.SparkBackend
 import is.hail.expr.SparkAnnotationImpex
 import is.hail.io.fs.HadoopFS
 import is.hail.io.plink.{FamFileConfig, LoadPlink, MatrixPLINKReader, MatrixPLINKReaderParameters}
+import is.hail.methods.LogisticRegression
 import is.hail.rvd.RVDPartitioner
+import is.hail.tiledb.TileDBHailVCFReader
 import is.hail.types.{MatrixType, TableType}
-import is.hail.types.physical.PStruct
+import is.hail.types.physical.{PCanonicalCall, PInt32, PStruct}
 import is.hail.types.virtual._
 import is.hail.utils._
 import is.hail.variant.{Locus, ReferenceGenome}
@@ -180,7 +182,7 @@ class TileDBTest extends HailSuite {
     val df = testSampleDataset.toDF
 
     // Initialize the reader
-    val reader = new TileDBHailVCFReader(URI.create(testSampleGroupURI("ingested_2samples")), opts, df)
+    val reader = new TileDBHailVCFReader(null, null)
 
     val matrixRead = MatrixRead(reader.fullMatrixType, false, false, reader)
     val mt = MatrixRowsTable(matrixRead)
@@ -208,6 +210,22 @@ class TileDBTest extends HailSuite {
     val t2: TableIR = MatrixRowsTable(vcf2)
     val tv2 = Interpret.apply(t2, ctx)
 
+  }
+
+  @Test def hailReaderVCF(): Unit = {
+
+    // Load the Helix VCF file
+     val hailMatrixRead = importVCF(ctx, "/Users/victor/Dev/tiledb/TileDB-VCF/libtiledbvcf/test/inputs/small.vcf")
+     val hailMatrixRowsTable: TableIR = MatrixRowsTable(hailMatrixRead)
+     val hailTV = Interpret.apply(hailMatrixRowsTable, ctx)
+
+    hailTV.rvd.toRows.collect()
+
+    val tiledbReader = TileDBHailVCFReader.apply(ctx, "/Users/victor/Dev/tiledb/TileDB-VCF/libtiledbvcf/test/inputs/arrays/v3/ingested_2samples", Option("HG01762"))
+
+    val tiledbMatrixRead = new MatrixRead(tiledbReader.fullMatrixType, false, false, tiledbReader)
+    val tiledbMatrixRowsTable = MatrixRowsTable(tiledbMatrixRead)
+    val tiledbTV = Interpret.apply(tiledbMatrixRowsTable, ctx)
   }
 
   @Test def testRDD(): Unit = {
@@ -333,14 +351,16 @@ class TileDBTest extends HailSuite {
     assert(tileDBRows == hailRows)
   }
 
-  @Test def testTableJoinOfImport() {
-    val mt = importVCF(ctx, "src/test/resources/sample.vcf", nPartitions = Some(8))
+  @Test def testLR() {
+    val df = ctx.backend.asSpark("TileDBHailVCFReader").sparkSession.read
+      .format("io.tiledb.vcf")
+      .option("uri", "/Users/victor/Dev/tiledb/TileDB-VCF/apis/spark/src/test/resources/arrays/v3/ingested_2samples")
+      .option("samples", "HG01762")
+      .option("tiledb.vfs.num_threads", 1)
+      .option("tiledb_stats_log_level", Level.INFO.toString)
+      .load()
 
-    var t: TableIR = MatrixRowsTable(mt)
-
-    val i = Interpret(t, ctx)
-
-    assertEvalsTo(TableCount(t), 346L);
-
+    df.show()
+    println()
   }
 }

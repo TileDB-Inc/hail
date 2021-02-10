@@ -5,6 +5,7 @@ import is.hail.types.virtual._
 import is.hail.utils._
 import is.hail.variant.Locus
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.catalyst.expressions.GenericRow
 
 class RegionValueBuilder(var region: Region) {
   def this() = this(null)

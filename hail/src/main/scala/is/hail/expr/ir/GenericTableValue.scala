@@ -188,9 +188,19 @@ class GenericTableValue(
         getRVDCoercer(ctx).coerce(RVDType(requestedRowPType, fullTableType.key), crdd)
     }
 
-    TableValue(ctx,
+    println(s"GenericTableValue: Created RVD with fullTableType: ${fullTableType}\nrequestedRowType: ${requestedRowPType}")
+    rvd.toRows.take(3).foreach(println)
+
+    val tv = TableValue(ctx,
       requestedType,
       BroadcastRow(ctx, globals(requestedType.globalType), requestedType.globalType),
       rvd)
+
+
+
+    println("TableValueRows")
+    tv.rdd.take(3).foreach(println)
+
+    tv
   }
 }

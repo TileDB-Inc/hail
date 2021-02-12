@@ -458,6 +458,7 @@ final class VCFLine(val line: String, arrayElementsRequired: Boolean,
     if (mj || mk)
       rvb.setMissing()
     else {
+
       rvb.addInt(Call2(j, k, phased = isPhased))
     }
   }
@@ -1398,14 +1399,13 @@ object LoadVCF {
     // QUAL
     if (c.hasQual) {
       val qstr = l.parseString()
-      if (qstr == ".")
+      if (qstr == ".") {
         rvb.addDouble(-10.0)
-      else
+      } else
         rvb.addDouble(qstr.toDouble)
     } else
       l.skipField()
     l.nextField()
-
     // filters
     if (c.hasFilters) {
       if (l.parseFilters()) {

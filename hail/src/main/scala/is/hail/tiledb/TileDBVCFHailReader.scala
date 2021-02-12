@@ -66,7 +66,7 @@ class TileDBHailVCFReader(val uri: String, val samples: Option[String]) extends 
     (infoAttr.toString.split("_")(1) -> dt.virtualType)
   }
 
-  val entryType = TStruct("DP" -> PInt32().virtualType, "GT" -> PCanonicalCall().virtualType, "PL" -> PInt32().virtualType)
+  val entryType = TStruct("DP" -> PInt32().virtualType, "GT" -> PCanonicalCall().virtualType, "PL" -> TArray(PInt32().virtualType))
 
   val fullMatrixType: MatrixType = MatrixType(
     globalType = TStruct.empty,
@@ -74,15 +74,19 @@ class TileDBHailVCFReader(val uri: String, val samples: Option[String]) extends 
     colKey = Array("s"),
     rowType = TStruct(
       "locus" -> TLocus(ReferenceGenome.GRCh37),
-      "alleles" -> TArray(TString),
-      "info" -> entryType),
+      "alleles" -> TArray(TString)),
     rowKey = Array("locus", "alleles"),
     entryType = entryType)
 
-  val str = ""
-
   override def apply(tr: TableRead, ctx: ExecuteContext): TableValue = {
     val requestedType = tr.typ
+    val rowType = tr.typ.rowType
+
+    val entryType: TStruct = rowType.fieldOption(LowerMatrixIR.entriesFieldName) match {
+      case Some(entriesArray) => entriesArray.typ.asInstanceOf[TArray].elementType.asInstanceOf[TStruct]
+      case None => TStruct.empty
+    }
+    val hasEntryFields = entryType.size > 0
 
     val df = ctx.backend.asSpark("spark")
       .sparkSession.read
@@ -91,23 +95,59 @@ class TileDBHailVCFReader(val uri: String, val samples: Option[String]) extends 
       .option("uri", uri)
       .load()
 
-    val df2 = df.groupBy("contig","posStart", "alleles")
+    var projection = df.groupBy("contig","posStart", "alleles")
       .agg(functions.collect_list("genotype").as("GT"),
-        functions.collect_list("fmt_DP").as("DP"))
+        functions.collect_list("fmt_DP").as("DP"),
+        functions.collect_list("fmt_PL").as("PL"))
 
+    var columns = Seq[String]("contig", "posStart", "alleles")
 
-    val tt = fullMatrixType.toTableType(LowerMatrixIR.entriesFieldName, LowerMatrixIR.colsFieldName)
+    val infoFields = Seq("GT", "DP", "PL")
 
-    val rdd = df2.rdd.map{
-      r => {
-        val locus = Locus(r.getString(0), r.getInt(1))
-        val alleles = r.get(2)
+    infoFields.foreach(infoField => if (entryType.hasField(infoField)) columns = columns :+ infoField)
 
-        val GT = r.get(3).asInstanceOf[mutable.WrappedArray[mutable.WrappedArray[Int]]].map(x => Row(Call2(x(0), x(1))))
+//    if (hasEntryFields) {
+//      columns = (columns ++ entryType.fieldNames.toSeq)
+//    }
 
-        Row(locus, alleles, GT)
+    projection = projection.select(columns.map(new Column(_)) :  _ *)
+
+    val rdd = projection.rdd.map{
+      row => {
+        val locus = Locus(row.getString(0), row.getInt(1))
+        val alleles = row.get(2)
+
+        var rowFields = Seq(locus, alleles)
+
+        // Parse Entry fields (GT, DP and PL)
+        var idx = rowFields.size + 1
+        entryType.fieldNames.foreach { fieldName =>
+          fieldName match {
+            case "GT" => {
+              val GT = row.get(idx).asInstanceOf[mutable.WrappedArray[mutable.WrappedArray[Int]]]
+                .map(x => Row(Call2(x(0), x(1))))
+              rowFields = rowFields :+ GT
+            }
+            case "DP" => {
+              val DP = row.get(idx).asInstanceOf[mutable.WrappedArray[Int]]
+                .map(x => Row(x))
+              rowFields = rowFields :+ DP
+            }
+            case "PL" => {
+              val PL = row.get(idx).asInstanceOf[mutable.WrappedArray[mutable.WrappedArray[Int]]]
+                .map(x => Row(x))
+              rowFields = rowFields :+ PL
+            }
+            case _ => {}
+          }
+          idx += 1
+        }
+
+        Row(rowFields : _ *)
       }
     }
+
+    val tt = fullMatrixType.toTableType(LowerMatrixIR.entriesFieldName, LowerMatrixIR.colsFieldName)
 
     val globals = {
       if (samples.isDefined)
@@ -121,7 +161,6 @@ class TileDBHailVCFReader(val uri: String, val samples: Option[String]) extends 
     }
 
     val crdd = ContextRDD.weaken(rdd).toRegionValues(requestedType.canonicalRowPType)
-
     val rvd = RVD.coerce(ctx, requestedType.canonicalRVDType, crdd)
 
     val tv = TableValue(ctx,
@@ -131,8 +170,6 @@ class TileDBHailVCFReader(val uri: String, val samples: Option[String]) extends 
 
     //val tv = TableValue(ctx, tr.typ.rowType, tr.typ.key, rdd)
 
-    println(s"Created TileDB table with ${tr}")
-    tv.rdd.collect.foreach(println)
     tv
   }
 

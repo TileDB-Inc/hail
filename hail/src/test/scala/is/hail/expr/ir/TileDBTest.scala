@@ -215,17 +215,19 @@ class TileDBTest extends HailSuite {
   @Test def hailReaderVCF(): Unit = {
 
     // Load the Helix VCF file
-     val hailMatrixRead = importVCF(ctx, "/Users/victor/Dev/tiledb/TileDB-VCF/libtiledbvcf/test/inputs/small.vcf")
-     val hailMatrixRowsTable: TableIR = MatrixRowsTable(hailMatrixRead)
-     val hailTV = Interpret.apply(hailMatrixRowsTable, ctx)
+    val hailMatrixRead = importVCF(ctx, "/Users/victor/Dev/tiledb/TileDB-VCF/libtiledbvcf/test/inputs/small.vcf")
+    val hailMatrixRowsTable: TableIR = MatrixRowsTable(hailMatrixRead)
+    val hailTV = Interpret.apply(hailMatrixRowsTable, ctx)
+//
+//    val tiledbReader = TileDBHailVCFReader.apply(ctx, "/Users/victor/Dev/tiledb/TileDB-VCF/libtiledbvcf/test/inputs/arrays/v3/ingested_2samples", Option("HG01762"))
+//
+//    val tiledbMatrixRead = new MatrixRead(tiledbReader.fullMatrixType, false, false, tiledbReader)
+//    val tiledbMatrixRowsTable = MatrixRowsTable(tiledbMatrixRead)
+//    val tiledbTV = Interpret.apply(tiledbMatrixRowsTable, ctx)
 
-    hailTV.rvd.toRows.collect()
 
-    val tiledbReader = TileDBHailVCFReader.apply(ctx, "/Users/victor/Dev/tiledb/TileDB-VCF/libtiledbvcf/test/inputs/arrays/v3/ingested_2samples", Option("HG01762"))
-
-    val tiledbMatrixRead = new MatrixRead(tiledbReader.fullMatrixType, false, false, tiledbReader)
-    val tiledbMatrixRowsTable = MatrixRowsTable(tiledbMatrixRead)
-    val tiledbTV = Interpret.apply(tiledbMatrixRowsTable, ctx)
+//
+//    hailTV.rvd.toRows.collect()
   }
 
   @Test def testRDD(): Unit = {
